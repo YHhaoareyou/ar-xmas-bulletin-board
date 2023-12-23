@@ -30,12 +30,19 @@
       function loadMessages() {
         firebase
           .database()
-          .ref()
-          .child("messages")
+          .ref("messages")
           .get()
           .then((snapshot) => {
             if (snapshot.exists()) {
               console.log(snapshot.val());
+              Object.keys(snapshot.val()).forEach((timestamp) => {
+                if (
+                  !document.getElementById("new-text-container-" + timestamp)
+                ) {
+                  const m = snapshot.val()[timestamp].message;
+                  if (m) createNewMessage(m, timestamp);
+                }
+              });
             } else {
               console.log("No data available");
             }
@@ -45,12 +52,33 @@
           });
       }
 
-      function uploadMessage(message) {
+      function uploadMessage(message, timestamp = Date.now()) {
         firebase
           .database()
-          .ref("messages/" + Date.now())
+          .ref("messages/" + timestamp)
           .set({
             message: message,
+          });
+        // Remove the oldest message if there are too many messages (> 20)
+        firebase
+          .database()
+          .ref("messages")
+          .get()
+          .then((snapshot) => {
+            if (snapshot.exists()) {
+              if (Object.keys(snapshot.val()).length > 20) {
+                var oldestKey = Object.keys(snapshot.val())[0];
+                firebase
+                  .database()
+                  .ref("messages/" + oldestKey)
+                  .set(null);
+              }
+            } else {
+              console.log("No data available");
+            }
+          })
+          .catch((error) => {
+            console.error(error);
           });
       }
 
@@ -61,7 +89,7 @@
         },
       });
 
-      function createNewMessage(message) {
+      function createNewMessage(message, timestamp = Date.now()) {
         var tree = document.getElementById("xmas-tree");
         var newTextContainer = document
           .getElementById("text-container-template")
@@ -78,6 +106,7 @@
           "material",
           "color: #" + Math.floor(Math.random() * 16777215).toString(16)
         );
+        newText.setAttribute("position", `-0.5 0 ${Math.random() * 0.5 + 1}`);
         newTextContainer.id = "new-text-container-" + Date.now();
         newTextContainer.setAttribute(
           "position",
@@ -88,15 +117,24 @@
           `0, ${Math.random() * 360}, 0`
         );
         tree.appendChild(newTextContainer);
-        uploadMessage(message.substring(0, 30));
+        return Date.now();
+      }
+
+      function createAndUploadMessage(message) {
+        var timestamp = createNewMessage(message);
+        uploadMessage(message.substring(0, 30), timestamp);
       }
 
       function inputMessage() {
         var message = window.prompt(
           "Tweet something IN 30 CHARACTERS! (new year wish, christmas gift you want, etc.)"
         );
-        createNewMessage(message);
+        createAndUploadMessage(message);
       }
+
+      window.onload = (event) => {
+        loadMessages();
+      };
     </script>
 
     <a-scene
@@ -153,7 +191,7 @@
                 position="-0.5 0 1"
                 scale="0.1 0.1 0.1"
                 material="color: #56cfe1"
-                text-geometry="value: Merry Xmas!; height: 0.3; font: #DelaGothicFont"
+                text-geometry="height: 0.3; font: #DelaGothicFont"
                 shadow="receive: true"
               ></a-entity>
             </a-entity>
@@ -165,11 +203,9 @@
     </a-scene>
 
     <div class="centered bottom-bar">
-      <button
-        class="btn"
-        data-action="change"
-        onclick="inputMessage()"
-      ></button>
+      <button class="btn" data-action="change" onclick="inputMessage()">
+        Share message
+      </button>
     </div>
   </body>
 </html>
