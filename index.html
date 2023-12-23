@@ -7,12 +7,53 @@
     <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
     <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
     <script src="https://unpkg.com/aframe-text-geometry-component@^0.5.1/dist/aframe-text-geometry-component.min.js"></script>
-
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <link rel="stylesheet" href="./style.css" />
   </head>
 
   <body style="margin: 0; overflow: hidden">
     <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyCxqgjyPYqiq_XCO1RVtGB_f2tcHXURFmw",
+        authDomain: "ar-xmas-bulletin-board.firebaseapp.com",
+        projectId: "ar-xmas-bulletin-board",
+        storageBucket: "ar-xmas-bulletin-board.appspot.com",
+        messagingSenderId: "646673560293",
+        appId: "1:646673560293:web:c7f691b8a544699a93da0c",
+        databaseURL:
+          "https://ar-xmas-bulletin-board-default-rtdb.asia-southeast1.firebasedatabase.app",
+      };
+
+      firebase.initializeApp(firebaseConfig);
+
+      function loadMessages() {
+        firebase
+          .database()
+          .ref()
+          .child("messages")
+          .get()
+          .then((snapshot) => {
+            if (snapshot.exists()) {
+              console.log(snapshot.val());
+            } else {
+              console.log("No data available");
+            }
+          })
+          .catch((error) => {
+            console.error(error);
+          });
+      }
+
+      function uploadMessage(message) {
+        firebase
+          .database()
+          .ref("messages/" + Date.now())
+          .set({
+            message: message,
+          });
+      }
+
       AFRAME.registerComponent("rotate", {
         tick: function (time, timeDelta) {
           // Rotate the entity by a small angle every frame
@@ -47,6 +88,7 @@
           `0, ${Math.random() * 360}, 0`
         );
         tree.appendChild(newTextContainer);
+        uploadMessage(message.substring(0, 30));
       }
 
       function inputMessage() {
